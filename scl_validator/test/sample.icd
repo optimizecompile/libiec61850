@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SCL xmlns="http://www.iec.ch/61850/2003/SCL" version="2007" revision="B">
+  <Header id="TestIED" version="1.0" revision="A" toolID="SCLValidatorTest"/>
+  
+  <DataTypeTemplates>
+    <!-- EnumType definitions -->
+    <EnumType id="CtlModelKind">
+      <EnumVal ord="0">status-only</EnumVal>
+      <EnumVal ord="1">direct-with-normal-security</EnumVal>
+      <EnumVal ord="2">sbo-with-normal-security</EnumVal>
+      <EnumVal ord="3">direct-with-enhanced-security</EnumVal>
+      <EnumVal ord="4">sbo-with-enhanced-security</EnumVal>
+    </EnumType>
+    
+    <EnumType id="SboClassKind">
+      <EnumVal ord="0">operate-once</EnumVal>
+      <EnumVal ord="1">operate-many</EnumVal>
+    </EnumType>
+    
+    <!-- DAType definitions -->
+    <DAType id="SBOw">
+      <BDA name="ctlVal" bType="INT32"/>
+      <BDA name="origin" bType="Struct" type="Originator"/>
+      <BDA name="ctlNum" bType="INT8U"/>
+      <BDA name="T" bType="Timestamp"/>
+      <BDA name="Test" bType="BOOLEAN"/>
+      <BDA name="Check" bType="Check"/>
+    </DAType>
+    
+    <DAType id="Originator">
+      <BDA name="orCat" bType="Enum" type="CtlModelKind"/>
+      <BDA name="orIdent" bType="Octet64"/>
+    </DAType>
+    
+    <!-- DOType definitions -->
+    <DOType id="SPC" cdc="SPC">
+      <DA name="stVal" bType="Enum" type="CtlModelKind" fc="ST" dchg="true"/>
+      <DA name="q" bType="Quality" fc="ST" qchg="true"/>
+      <DA name="t" bType="Timestamp" fc="ST"/>
+      <DA name="ctlModel" bType="Enum" type="CtlModelKind" fc="CF">
+        <Val>direct-with-normal-security</Val>
+      </DA>
+      <DA name="sboTimeout" bType="INT32U" fc="CF"/>
+      <DA name="operTimeout" bType="INT32U" fc="CF"/>
+      <DA name="SBOw" bType="Struct" type="SBOw" fc="CO"/>
+      <DA name="Oper" bType="Struct" type="SBOw" fc="CO"/>
+      <DA name="Cancel" bType="Struct" type="Cancel" fc="CO"/>
+    </DOType>
+    
+    <DOType id="INS" cdc="INS">
+      <DA name="stVal" bType="INT32" fc="ST" dchg="true"/>
+      <DA name="q" bType="Quality" fc="ST" qchg="true"/>
+      <DA name="t" bType="Timestamp" fc="ST"/>
+    </DOType>
+    
+    <DOType id="LPL" cdc="LPL">
+      <DA name="vendor" bType="VisString255" fc="DC"/>
+      <DA name="swRev" bType="VisString255" fc="DC"/>
+      <DA name="d" bType="VisString255" fc="DC"/>
+      <DA name="configRev" bType="VisString255" fc="DC">
+        <Val>1.0</Val>
+      </DA>
+      <DA name="ldNs" bType="VisString255" fc="EX">
+        <Val>IEC 61850-7-4:2007B</Val>
+      </DA>
+      <DA name="lnNs" bType="VisString255" fc="EX">
+        <Val>IEC 61850-7-4:2007B</Val>
+      </DA>
+    </DOType>
+    
+    <DOType id="DPL" cdc="DPL">
+      <DA name="vendor" bType="VisString255" fc="DC"/>
+      <DA name="hwRev" bType="VisString255" fc="DC"/>
+      <DA name="swRev" bType="VisString255" fc="DC"/>
+      <DA name="serNum" bType="VisString255" fc="DC"/>
+      <DA name="model" bType="VisString255" fc="DC"/>
+    </DOType>
+    
+    <!-- LNodeType definitions -->
+    <LNodeType id="LLN0" lnClass="LLN0">
+      <DO name="Mod" type="SPC"/>
+      <DO name="Health" type="INS"/>
+      <DO name="NamPlt" type="LPL"/>
+    </LNodeType>
+    
+    <LNodeType id="LPHD" lnClass="LPHD">
+      <DO name="PhyNam" type="DPL"/>
+      <DO name="PhyHealth" type="INS"/>
+    </LNodeType>
+    
+    <LNodeType id="MMXU" lnClass="MMXU">
+      <DO name="TotW" type="INS"/>
+      <DO name="TotV" type="INS"/>
+      <DO name="TotA" type="INS"/>
+    </LNodeType>
+  </DataTypeTemplates>
+  
+  <IED name="TestIED1" manufacturer="TestVendor" type="TestDevice">
+    <AccessPoint name="AP1">
+      <Server authentication="None">
+        <LDevice inst="LD1" ldName="TestIED1LD1">
+          <LN0 lnClass="LLN0" lnType="LLN0">
+            <DOI name="NamPlt">
+              <DAI name="vendor">
+                <Val>TestVendor</Val>
+              </DAI>
+              <DAI name="swRev">
+                <Val>1.0.0</Val>
+              </DAI>
+              <DAI name="configRev">
+                <Val>1.0</Val>
+              </DAI>
+            </DOI>
+            
+            <DataSet name="DataSet1">
+              <FCDA ldInst="LD1" lnClass="MMXU" lnInst="1" doName="TotW" daName="stVal" fc="ST"/>
+              <FCDA ldInst="LD1" lnClass="MMXU" lnInst="1" doName="TotV" daName="stVal" fc="ST"/>
+            </DataSet>
+            
+            <ReportControl name="RCB1" datSet="DataSet1" confRev="1" buffered="true" 
+                           rptID="TestIED1LD1/LLN0.RCB1" bufTime="100" intgPd="1000">
+            </ReportControl>
+            
+            <GSEControl name="GCB1" datSet="DataSet1" confRev="1" fixedOffs="false">
+            </GSEControl>
+          </LN0>
+          
+          <LN lnClass="LPHD" lnType="LPHD" inst="1">
+            <DOI name="PhyNam">
+              <DAI name="vendor">
+                <Val>TestVendor</Val>
+              </DAI>
+              <DAI name="model">
+                <Val>TestModel</Val>
+              </DAI>
+            </DOI>
+          </LN>
+          
+          <LN lnClass="MMXU" lnType="MMXU" inst="1">
+            <DOI name="TotW">
+              <DAI name="stVal">
+                <Val>1000</Val>
+              </DAI>
+            </DOI>
+            <DOI name="TotV">
+              <DAI name="stVal">
+                <Val>220</Val>
+              </DAI>
+            </DOI>
+          </LN>
+        </LDevice>
+      </Server>
+    </AccessPoint>
+  </IED>
+  
+  <Communication>
+    <SubNetwork name="SN1" type="IP">
+      <ConnectedAP iedName="TestIED1" apName="AP1">
+        <P type="IP">0A010001</P>
+        <P type="SUBNET">FFFFFF00</P>
+        <P type="GATEWAY">0A0100FE</P>
+        
+        <GSE ldInst="LD1" cbName="GCB1">
+          <P type="MAC-Address">010CCD010001</P>
+          <P type="VLAN-ID">000</P>
+          <P type="VLAN-PRIORITY">4</P>
+          <P type="APPID">0001</P>
+        </GSE>
+      </ConnectedAP>
+    </SubNetwork>
+  </Communication>
+</SCL>

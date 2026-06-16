@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SCL xmlns="http://www.iec.ch/61850/2003/SCL" version="2007" revision="B">
+  <Header id="TestIED_Errors" version="1.0" toolID="SCLValidatorTest"/>
+  
+  <DataTypeTemplates>
+    <!-- EnumType definitions -->
+    <EnumType id="CtlModelKind">
+      <EnumVal ord="0">status-only</EnumVal>
+      <EnumVal ord="1">direct-with-normal-security</EnumVal>
+    </EnumType>
+    
+    <!-- DOType definitions -->
+    <DOType id="SPC" cdc="SPC">
+      <DA name="stVal" bType="Enum" type="CtlModelKind" fc="ST" dchg="true"/>
+      <DA name="q" bType="Quality" fc="ST" qchg="true"/>
+    </DOType>
+    
+    <!-- Missing DAType referenced below -->
+    <!-- Missing DOType "INS" referenced below -->
+    
+    <!-- LNodeType definitions -->
+    <LNodeType id="LLN0" lnClass="LLN0">
+      <DO name="Mod" type="SPC"/>
+      <DO name="Health" type="INS"/>  <!-- ERROR: INS not defined -->
+    </LNodeType>
+    
+    <LNodeType id="MMXU" lnClass="MMXU">
+      <DO name="TotW" type="INS"/>  <!-- ERROR: INS not defined -->
+    </LNodeType>
+  </DataTypeTemplates>
+  
+  <!-- IED with errors -->
+  <IED manufacturer="TestVendor" type="TestDevice">  <!-- ERROR: missing name -->
+    <AccessPoint>  <!-- ERROR: missing name -->
+      <Server authentication="None">
+        <LDevice inst="LD1" ldName="TestIED1LD1">
+          <LN0 lnClass="LLN0">  <!-- ERROR: missing lnType -->
+            <DOI name="NamPlt">
+              <DAI name="ctlModel">
+                <Val>invalid-enum-value</Val>  <!-- ERROR: invalid enum value -->
+              </DAI>
+              <DAI name="sboTimeout">
+                <Val>abc</Val>  <!-- ERROR: invalid integer value -->
+              </DAI>
+            </DOI>
+            
+            <DataSet name="DataSet1">
+              <FCDA ldInst="LD2" lnClass="MMXU" lnInst="1" doName="TotW" fc="ST"/>  <!-- ERROR: LD2 not exist -->
+            </DataSet>
+            
+            <ReportControl datSet="DataSet2" confRev="1">  <!-- ERROR: missing name, DataSet2 not exist -->
+            </ReportControl>
+            
+            <SettingGroup actSG="1" numOfSGs="5"/>  <!-- ERROR: SettingGroup should be in LLN0 only -->
+          </LN0>
+          
+          <LN lnClass="MMXU" inst="1">  <!-- ERROR: missing lnType -->
+            <DOI name="TotW">
+              <DAI name="stVal">
+                <Val>999999999999999</Val>  <!-- ERROR: out of range for INT32 -->
+              </DAI>
+            </DOI>
+          </LN>
+        </LDevice>
+      </Server>
+    </AccessPoint>
+  </IED>
+  
+  <!-- Communication with errors -->
+  <Communication>
+    <SubNetwork type="IP">  <!-- ERROR: missing name -->
+      <ConnectedAP iedName="UnknownIED" apName="AP1">  <!-- ERROR: IED not exist -->
+        <P type="IP">INVALID_IP</P>  <!-- ERROR: invalid hex -->
+        <P type="MAC-Address">INVALID_MAC</P>  <!-- ERROR: invalid hex -->
+        <P type="VLAN-PRIORITY">8</P>  <!-- ERROR: out of range (0-7) -->
+        
+        <GSE ldInst="LD1" cbName="GCB1">
+          <P type="APPID">INVALID_APPID</P>  <!-- ERROR: invalid hex -->
+        </GSE>
+      </ConnectedAP>
+    </SubNetwork>
+  </Communication>
+</SCL>
