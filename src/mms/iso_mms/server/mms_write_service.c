@@ -634,7 +634,7 @@ mmsServer_handleWriteRequest(MmsServerConnection connection, uint8_t* buffer, in
     if (writeRequest->variableAccessSpecification.present == VariableAccessSpecification_PR_variableListName)
     {
         handleWriteNamedVariableListRequest(connection, writeRequest, invokeId, response);
-        goto exit_function;
+        goto unlock_and_exit_function;
     }
     else if (writeRequest->variableAccessSpecification.present == VariableAccessSpecification_PR_listOfVariable)
     {
@@ -643,19 +643,19 @@ mmsServer_handleWriteRequest(MmsServerConnection connection, uint8_t* buffer, in
         if (numberOfWriteItems < 1)
         {
             mmsMsg_createMmsRejectPdu(&invokeId, MMS_ERROR_REJECT_REQUEST_INVALID_ARGUMENT, response);
-            goto exit_function;
+            goto unlock_and_exit_function;
         }
 
         if (numberOfWriteItems > CONFIG_MMS_WRITE_SERVICE_MAX_NUMBER_OF_WRITE_ITEMS)
         {
             mmsMsg_createMmsRejectPdu(&invokeId, MMS_ERROR_REJECT_OTHER, response);
-            goto exit_function;
+            goto unlock_and_exit_function;
         }
 
         if (writeRequest->listOfData.list.count != numberOfWriteItems)
         {
             mmsMsg_createMmsRejectPdu(&invokeId, MMS_ERROR_REJECT_REQUEST_INVALID_ARGUMENT, response);
-            goto exit_function;
+            goto unlock_and_exit_function;
         }
 
         MmsDataAccessError
@@ -897,12 +897,14 @@ mmsServer_handleWriteRequest(MmsServerConnection connection, uint8_t* buffer, in
     {
         /* unknown request type */
         mmsMsg_createMmsRejectPdu(&invokeId, MMS_ERROR_REJECT_REQUEST_INVALID_ARGUMENT, response);
-        goto exit_function;
+        goto unlock_and_exit_function;
     }
 
-exit_function:
+unlock_and_exit_function:
 
     MmsServer_unlockModel(connection->server);
+
+exit_function:
 
     asn_DEF_MmsPdu.free_struct(&asn_DEF_MmsPdu, mmsPdu, 0);
 }
