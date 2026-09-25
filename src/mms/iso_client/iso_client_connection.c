@@ -111,6 +111,7 @@ struct sIsoClientConnection
 
 #if (CONFIG_MMS_THREADLESS_STACK != 1)
     Semaphore tickMutex;
+    Semaphore socketMutex;
 #endif
 
     uint8_t* cotpReadBuf;
@@ -194,6 +195,7 @@ IsoClientConnection_create(TLSConfiguration tlsConfiguration, IsoConnectionParam
         self->stateMutex = Semaphore_create(1);
         self->transmitBufferMutex = Semaphore_create(1);
         self->tickMutex = Semaphore_create(1);
+        self->socketMutex = Semaphore_create(1);
 #if (CONFIG_MMS_SUPPORT_TLS == 1)
         self->tlsConfigMutex = Semaphore_create(1);
 #endif /* (CONFIG_MMS_SUPPORT_TLS == 1) */
@@ -318,8 +320,15 @@ sendConnectionRequestMessage(IsoClientConnection self)
 #endif /* (CONFIG_MMS_SUPPORT_TLS == 1) */
 
         /* COTP (ISO transport) handshake */
-        CotpIndication cotpIndication =
-                CotpConnection_sendConnectionRequestMessage(self->cotpConnection, self->parameters);
+    #if (CONFIG_MMS_THREADLESS_STACK != 1)
+        Semaphore_wait(self->socketMutex);
+    #endif
+
+        CotpIndication cotpIndication = CotpConnection_sendConnectionRequestMessage(self->cotpConnection, self->parameters);
+
+    #if (CONFIG_MMS_THREADLESS_STACK != 1)
+        Semaphore_post(self->socketMutex);
+    #endif
 
         if (cotpIndication != COTP_OK)
             return false;
@@ -376,7 +385,15 @@ sendAcseInitiateRequest(IsoClientConnection self)
     IsoSession_createConnectSpdu(self->session, self->parameters, sessionBuffer,
             presentationBuffer);
 
+#if (CONFIG_MMS_THREADLESS_STACK != 1)
+    Semaphore_wait(self->socketMutex);
+#endif
+
     CotpConnection_sendDataMessage(self->cotpConnection, sessionBuffer);
+
+#if (CONFIG_MMS_THREADLESS_STACK != 1)
+    Semaphore_post(self->socketMutex);
+#endif
 
 #if (CONFIG_MMS_THREADLESS_STACK != 1)
     Semaphore_post(self->transmitBufferMutex);
@@ -387,6 +404,7 @@ static void
 releaseSocket(IsoClientConnection self)
 {
 #if (CONFIG_MMS_THREADLESS_STACK != 1)
+    Semaphore_wait(self->socketMutex);
     Semaphore_wait(self->stateMutex);
 
     Socket socket = self->socket;
@@ -419,6 +437,10 @@ releaseSocket(IsoClientConnection self)
 
         Socket_destroy(socket);
     }
+
+#if (CONFIG_MMS_THREADLESS_STACK != 1)
+    Semaphore_post(self->socketMutex);
+#endif
 }
 
 /*
@@ -888,6 +910,10 @@ exit_function:
 void
 IsoClientConnection_sendMessage(IsoClientConnection self, ByteBuffer* payloadBuffer)
 {
+#if (CONFIG_MMS_THREADLESS_STACK != 1)
+    Semaphore_wait(self->socketMutex);
+#endif
+
     if (getState(self) == STATE_CONNECTED)
     {
         struct sBufferChain payloadBCMemory;
@@ -921,6 +947,8 @@ IsoClientConnection_sendMessage(IsoClientConnection self, ByteBuffer* payloadBuf
     }
 
 #if (CONFIG_MMS_THREADLESS_STACK != 1)
+    Semaphore_post(self->socketMutex);
+
     /* release transmit buffer for use by API client */
     Semaphore_post(self->transmitBufferMutex);
 #endif /* (CONFIG_MMS_THREADLESS_STACK != 1) */
@@ -1014,6 +1042,7 @@ IsoClientConnection_destroy(IsoClientConnection self)
     Semaphore_destroy(self->transmitBufferMutex);
     Semaphore_destroy(self->stateMutex);
     Semaphore_destroy(self->tickMutex);
+    Semaphore_destroy(self->socketMutex);
 #if (CONFIG_MMS_SUPPORT_TLS == 1)
     Semaphore_destroy(self->tlsConfigMutex);
 #endif
@@ -1066,7 +1095,16 @@ sendAbortMessage(IsoClientConnection self)
 
     IsoSession_createAbortSpdu(self->session, sessionBuffer, presentationBuffer);
 
-    CotpConnection_sendDataMessage(self->cotpConnection, sessionBuffer);
+#if (CONFIG_MMS_THREADLESS_STACK != 1)
+    Semaphore_wait(self->socketMutex);
+#endif
+
+    if (self->socket)
+        CotpConnection_sendDataMessage(self->cotpConnection, sessionBuffer);
+
+#if (CONFIG_MMS_THREADLESS_STACK != 1)
+    Semaphore_post(self->socketMutex);
+#endif
 
 #if (CONFIG_MMS_THREADLESS_STACK != 1)
     Semaphore_post(self->transmitBufferMutex);
@@ -1109,7 +1147,16 @@ IsoClientConnection_release(IsoClientConnection self)
 
     IsoSession_createFinishSpdu(NULL, sessionBuffer, presentationBuffer);
 
-    CotpConnection_sendDataMessage(self->cotpConnection, sessionBuffer);
+#if (CONFIG_MMS_THREADLESS_STACK != 1)
+    Semaphore_wait(self->socketMutex);
+#endif
+
+    if (self->socket)
+        CotpConnection_sendDataMessage(self->cotpConnection, sessionBuffer);
+
+#if (CONFIG_MMS_THREADLESS_STACK != 1)
+    Semaphore_post(self->socketMutex);
+#endif
 
 #if (CONFIG_MMS_THREADLESS_STACK != 1)
     Semaphore_post(self->transmitBufferMutex);
